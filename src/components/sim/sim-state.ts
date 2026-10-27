@@ -7,6 +7,7 @@ export const RACE_DELAY_S = 15; // real seconds both planets move together befor
 export const RACE_RATE = 0.8; // km/s gained per real second
 export const RACE_MAX_DV = 8; // total km/s added to the twin
 export const TWIN_SOFT_DV = 0.3; // km/s difference during the gradual-divergence phase
+export const TWIN_LEAD_RAD = 0.6; // angular head start of the faster planet
 /** Real seconds after acceleration ends before the two-planet experiment stops completely. */
 export const RACE_TAIL_S = 20;
 export const RACE_END_S = RACE_DELAY_S + RACE_MAX_DV / RACE_RATE + RACE_TAIL_S;
@@ -186,7 +187,11 @@ export class Sim {
     const r = Math.hypot(this.earth.x, this.earth.y);
     const sp = Math.hypot(this.earth.vx, this.earth.vy);
     const k = (r + 0.0008) / r;
-    this.twin = { x: this.earth.x * k, y: this.earth.y * k, vx: this.earth.vx, vy: this.earth.vy };
+    // The faster planet starts ahead (in the direction of motion) so it leads while it leaves the orbit.
+    const dir = Math.sign(this.earth.x * this.earth.vy - this.earth.y * this.earth.vx) || 1;
+    const a = TWIN_LEAD_RAD * dir, c = Math.cos(a), s = Math.sin(a);
+    const ex = this.earth.x * k, ey = this.earth.y * k;
+    this.twin = { x: ex * c - ey * s, y: ex * s + ey * c, vx: this.earth.vx * c - this.earth.vy * s, vy: this.earth.vx * s + this.earth.vy * c };
     const f = (sp + dvKms / 4.740470463) / sp;
     this.twin.vx *= f;
     this.twin.vy *= f;
