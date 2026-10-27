@@ -32,10 +32,10 @@ describe("two-planet experiment", () => {
     const s = new Sim();
     s.startRace();
     expect(s.race.added).toBe(0);
-    for (let t = 0; t < RACE_DELAY_S; t += 0.1) s.advance(0.1);
+    for (let i = 0; i < RACE_DELAY_S * 10 - 1; i++) s.advance(0.1);
     const twinBefore = { ...s.twin };
     expect(s.race.added).toBe(0);
-    s.advance(0.1);
+    s.advance(0.3);
     // not reset to the start point
     expect(Math.hypot(s.twin.x - twinBefore.x, s.twin.y - twinBefore.y)).toBeLessThan(0.05);
     expect(s.race.added).toBeGreaterThan(0);
