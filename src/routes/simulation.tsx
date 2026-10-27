@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { Sim, PACE, RACE_DELAY_S } from "@/components/sim/sim-state";
+import { Sim, PACE, RACE_DELAY_S, RACE_MAX_DV, RACE_RATE, SUN_MASS_PRESETS, SUN_MASS_KG } from "@/components/sim/sim-state";
 import type { CamMode, Show } from "@/components/sim/SpaceScene";
 import { orbitInfo, auyrToKms, escapeSpeedKms, surfaceTempK, EARTH_V_KMS, GM } from "@/lib/orbit-physics";
 
@@ -81,11 +81,12 @@ function SimulationPage() {
   const b = sim.earth;
   const r = Math.hypot(b.x, b.y);
   const v = auyrToKms(Math.hypot(b.vx, b.vy));
-  const info = orbitInfo(b, sim.gravity);
-  const vesc = escapeSpeedKms(r);
-  const vcirc = auyrToKms(Math.sqrt(GM / r));
+  const M = sim.sunMass;
+  const info = orbitInfo(b, sim.gravity, M);
+  const vesc = escapeSpeedKms(r, M);
+  const vcirc = auyrToKms(Math.sqrt((GM * M) / r));
   const tempC = surfaceTempK(r) - 273;
-  const gAcc = sim.gravity ? (GM / (r * r)) * 1.496e11 / (3.156e7 ** 2) * 1000 : 0; // mm/s²
+  const gAcc = sim.gravity ? ((GM * M) / (r * r)) * 1.496e11 / (3.156e7 ** 2) * 1000 : 0; // mm/s²
   const twinSep = sim.twinOn ? Math.hypot(sim.twin.x - b.x, sim.twin.y - b.y) * 149.6 : 0;
   const status = sim.collided.earth ? KIND["collision"] : KIND[info.kind];
 
@@ -119,10 +120,9 @@ function SimulationPage() {
     stable: () => { sim.stopTwin(); sim.setGravity(true); applySpeed(EARTH_V_KMS, 0); },
     sun: () => { sim.setGravity(true); applySpeed(6, 0); },
     escape: () => { sim.setGravity(true); applySpeed(46, 0); fly("system"); },
-    nogravity: () => { sim.setGravity(false); cinematic(); },
+    ...Object.fromEntries(SUN_MASS_PRESETS.map((p) => [`mass_${p.key}`, () => { sim.setSunMass(p.m); fly("wide"); }])),
     ellipse: () => { sim.setGravity(true); applySpeed(EARTH_V_KMS + ellip * 10, 0); fly("system"); },
-    twinSoft: () => { sim.setGravity(true); sim.stopTwin(); sim.startTwin(0.3); fly("system"); },
-    twinRace: () => { sim.setGravity(true); sim.stopTwin(); sim.startRace(); fly("system"); },
+    twins: () => { sim.setGravity(true); sim.stopTwin(); sim.startRace(); fly("system"); },
   };
   const pick = (k: string) => { PACE.v = 1; const f = fates[k]; if (f) schedule(k, f); };
   const quickReset = () => { if (fateTimer.current) clearTimeout(fateTimer.current); fateTimer.current = null; setPending(null); reset(); };
@@ -152,7 +152,16 @@ function SimulationPage() {
                 <Fate on={pending === "stable"} onClick={() => pick("stable")}>🌍 المدار الطبيعي المستقر</Fate>
                 <Fate on={pending === "sun"} onClick={() => pick("sun")}>🔥 السقوط في الشمس</Fate>
                 <Fate on={pending === "escape"} onClick={() => pick("escape")}>❄️ الإفلات والتجمد</Fate>
-                <Fate on={pending === "nogravity"} onClick={() => pick("nogravity")}>🚀 اختفاء جاذبية الشمس</Fate>
+              </div>
+              <div className="rounded-md border border-border/40 p-1">
+                <div className="mb-1 flex justify-between text-[10px] text-muted-foreground"><span>☀️ كتلة الشمس</span><span dir="ltr" className="font-mono">×{fmt(M, 2)} = {(SUN_MASS_KG * M).toExponential(2)} kg</span></div>
+                <div className="grid grid-cols-2 gap-1">
+                  {SUN_MASS_PRESETS.map((p) => (
+                    <Fate key={p.key} on={pending === `mass_${p.key}` || (!pending && M === p.m)} onClick={() => pick(`mass_${p.key}`)}>
+                      {p.label}<span dir="ltr" className="block font-mono text-[9px] text-muted-foreground">×{p.m} · {(SUN_MASS_KG * p.m).toExponential(2)} kg</span>
+                    </Fate>
+                  ))}
+                </div>
               </div>
               <div className="rounded-md border border-border/40 p-1">
                 <Fate on={pending === "ellipse"} onClick={() => pick("ellipse")}>🪐 مدار إهليلجي متطرف</Fate>
@@ -160,11 +169,7 @@ function SimulationPage() {
                 <div className="flex justify-between text-[9px] text-muted-foreground"><span>شدة التمدد</span><span dir="ltr" className="font-mono">{fmt(EARTH_V_KMS + ellip * 10, 1)} km/s</span></div>
               </div>
               <div className="rounded-md border border-border/40 p-1">
-                <div className="mb-1 text-[10px] text-muted-foreground">👥 كوكب الأرض التوأم</div>
-                <div className="grid grid-cols-2 gap-1">
-                  <Fate on={pending === "twinSoft"} onClick={() => pick("twinSoft")}>افتراق تدريجي هادئ</Fate>
-                  <Fate on={pending === "twinRace"} onClick={() => pick("twinRace")}>⚡ سباق الكوكبين</Fate>
-                </div>
+                <Fate on={pending === "twins"} onClick={() => pick("twins")}>👥 حالة كوكبين</Fate>
               </div>
               <div className="grid grid-cols-3 gap-1 pt-1">
                 <Fate onClick={quickReset}>🔄 إعادة ضبط</Fate>
@@ -213,7 +218,7 @@ function SimulationPage() {
         const R = sim.race;
         const days = (sim.t - R.t0) * 365.25;
         const row = (name: string, body: typeof sim.earth, key: "earth" | "twin", dead: boolean) => {
-          const o = orbitInfo(body, sim.gravity);
+          const o = orbitInfo(body, sim.gravity, M);
           return (
             <div className="rounded-lg border border-border/50 bg-background/70 px-2 py-1 backdrop-blur">
               <div className="text-center text-[11px] font-semibold">{name}</div>
@@ -226,10 +231,11 @@ function SimulationPage() {
           );
         };
         const left = Math.max(0, RACE_DELAY_S - R.realT);
+        const accelEnd = RACE_DELAY_S + RACE_MAX_DV / RACE_RATE;
         return (
           <div className="pointer-events-none absolute inset-x-0 top-2 z-20 mx-auto flex w-[min(560px,96vw)] flex-col gap-1">
             <div className="text-center text-[11px] font-semibold text-primary">
-              {left > 0 ? `الكوكبان يتحركان معاً — يبدأ التسارع بعد ${Math.ceil(left)} ث` : "الكوكب الثاني يتسارع ويتغير مداره وزمن دورته"} · الزمن المنقضي {fmt(days, 0)} يوم
+              {R.done ? "✅ انتهت التجربة — النتائج النهائية" : left > 0 ? `افتراق تدريجي — يبدأ السباق بعد ${Math.ceil(left)} ث` : R.realT < accelEnd ? "السباق: الكوكب الثاني يتسارع من موضعه الحالي ويتغير مداره وزمن دورته" : "السباق مستمر — مقارنة المدارين"} · الزمن المنقضي {fmt(days, 0)} يوم
             </div>
             <div className="grid grid-cols-2 gap-1">
               {row("🌍 الأرض الأصلية", sim.earth, "earth", sim.collided.earth)}
