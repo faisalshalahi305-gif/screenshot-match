@@ -57,12 +57,12 @@ export function orbitInfo(b: Body, gravity = true, mass = 1): OrbitInfo {
   const peri = p / (1 + e);
   if (peri < SUN_COLLIDE_AU) {
     const a = energy < 0 ? -MU / (2 * energy) : Infinity;
-    return { kind: "collision", e, a, periAU: peri, apoAU: energy < 0 ? a * (1 + e) : Infinity, periodYr: energy < 0 ? Math.sqrt(a ** 3) : Infinity, energy };
+    return { kind: "collision", e, a, periAU: peri, apoAU: energy < 0 ? a * (1 + e) : Infinity, periodYr: energy < 0 ? Math.sqrt(a ** 3 / mass) : Infinity, energy };
   }
   if (Math.abs(e - 1) < 1e-3) return { kind: "parabolic", e, a: Infinity, periAU: peri, apoAU: Infinity, periodYr: Infinity, energy };
   if (e > 1) return { kind: "hyperbolic", e, a: Infinity, periAU: peri, apoAU: Infinity, periodYr: Infinity, energy };
   const a = -MU / (2 * energy);
-  return { kind: e < 0.01 ? "circular" : "elliptic", e, a, periAU: a * (1 - e), apoAU: a * (1 + e), periodYr: Math.sqrt(a ** 3), energy };
+  return { kind: e < 0.01 ? "circular" : "elliptic", e, a, periAU: a * (1 - e), apoAU: a * (1 + e), periodYr: Math.sqrt(a ** 3 / mass), energy };
 }
 
 /** Equilibrium surface temperature (K) scaled from Earth's real mean ≈ 288 K at 1 AU. */
