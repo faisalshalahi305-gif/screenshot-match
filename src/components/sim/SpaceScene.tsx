@@ -617,7 +617,7 @@ function SpaceSceneImpl({ sim, show, mode, flyKey, tick, onTick, onUser, hidePla
       <Suspense fallback={null}>
         <Starfield />
         <Sun />
-        {!hidePlanets && <Planets />}
+        {!hidePlanets && <Planets sim={sim} />}
         <EarthBody which="earth" sim={sim} tint="#ffffff" />
         <EarthBody which="twin" sim={sim} tint="#ffcf8a" />
       </Suspense>

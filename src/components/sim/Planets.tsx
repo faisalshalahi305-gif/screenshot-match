@@ -1,8 +1,8 @@
-// Decorative solar-system planets: visual only, no physics.
+// Solar-system planets: positions come from the gravity simulation (Sim.planets).
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { S, PACE } from "./sim-state";
+import { S, PLANET_ORBITS, type Sim } from "./sim-state";
 
 type P = { name: string; au: number; r: number; colors: string[]; bands?: boolean; ring?: [number, number, string]; tilt?: number; phase: number };
 
@@ -52,18 +52,23 @@ function makeTex(colors: string[], bands?: boolean) {
   return t;
 }
 
-function Planet({ p }: { p: P }) {
+function Planet({ p, sim }: { p: P; sim: Sim }) {
   const grp = useRef<THREE.Group>(null);
   const body = useRef<THREE.Mesh>(null);
   const tex = useMemo(() => makeTex(p.colors, p.bands), [p]);
   const R = orbitR(p.au);
   const line = Math.max(0.05, R * 0.006);
-  const speed = 0.6 / Math.pow(p.au, 1.5); // Kepler-ish, visual
-  const ang = useRef(p.phase);
+  const idx = PLANET_ORBITS.findIndex((o) => o.name === p.name);
   useFrame((_, d) => {
     const dt = Math.min(d, 0.05);
-    ang.current += speed * dt * PACE.v;
-    if (grp.current) grp.current.position.set(Math.cos(ang.current) * R, 0, -Math.sin(ang.current) * R);
+    const b = sim.planets[idx];
+    if (grp.current && b) {
+      // Real physical distance, displayed with the same compressed scale as the orbit rings.
+      const r = Math.hypot(b.x, b.y);
+      const dr = orbitR(Math.max(r, 1e-4));
+      grp.current.position.set((b.x / r) * dr, 0, -(b.y / r) * dr);
+      grp.current.visible = !sim.planetDead[idx];
+    }
     if (body.current) body.current.rotation.y += dt * 0.6;
   });
   return (
@@ -97,10 +102,10 @@ function Planet({ p }: { p: P }) {
   );
 }
 
-export function Planets() {
+export function Planets({ sim }: { sim: Sim }) {
   return (
     <>
-      {PLANETS.map((p) => <Planet key={p.name} p={p} />)}
+      {PLANETS.map((p) => <Planet key={p.name} p={p} sim={sim} />)}
     </>
   );
 }
