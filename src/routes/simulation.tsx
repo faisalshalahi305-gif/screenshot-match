@@ -4,7 +4,25 @@ import { Sim, PACE, RACE_DELAY_S, RACE_MAX_DV, RACE_RATE, SUN_MASS_PRESETS, SUN_
 import type { CamMode, Show } from "@/components/sim/SpaceScene";
 import { orbitInfo, auyrToKms, escapeSpeedKms, surfaceTempK, EARTH_V_KMS, GM } from "@/lib/orbit-physics";
 
-const SpaceScene = lazy(() => import("@/components/sim/SpaceScene"));
+// Retry the chunk once, then hard-reload once if it still fails (stale chunk after a restart/deploy).
+const SpaceScene = lazy(async () => {
+  try {
+    return await import("@/components/sim/SpaceScene");
+  } catch {
+    await new Promise((r) => setTimeout(r, 800));
+    try {
+      return await import("@/components/sim/SpaceScene");
+    } catch (e) {
+      if (!sessionStorage.getItem("sim-reloaded")) {
+        sessionStorage.setItem("sim-reloaded", "1");
+        window.location.reload();
+        return new Promise<never>(() => {});
+      }
+      throw e;
+    }
+  }
+});
+if (typeof window !== "undefined") window.setTimeout(() => sessionStorage.removeItem("sim-reloaded"), 10_000);
 
 export const Route = createFileRoute("/simulation")({
   ssr: false,
