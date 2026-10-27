@@ -6,6 +6,34 @@ export const S = 20; // scene units per AU
 export const RACE_DELAY_S = 15; // real seconds both planets move together before the twin speeds up
 export const RACE_RATE = 0.8; // km/s gained per real second
 export const RACE_MAX_DV = 8; // total km/s added to the twin
+export const TWIN_SOFT_DV = 0.3; // km/s difference during the gradual-divergence phase
+/** Real seconds after acceleration ends before the two-planet experiment stops completely. */
+export const RACE_TAIL_S = 20;
+export const RACE_END_S = RACE_DELAY_S + RACE_MAX_DV / RACE_RATE + RACE_TAIL_S;
+
+/** Sun-mass presets, as multiples of the real Sun (1.989×10³⁰ kg). */
+export const SUN_MASS_KG = 1.989e30;
+export const SUN_MASS_PRESETS = [
+  { key: "muchMore", label: "كتلة أكبر بكثير", m: 4 },
+  { key: "more", label: "كتلة أكبر", m: 1.5 },
+  { key: "less", label: "كتلة أصغر", m: 0.6 },
+  { key: "muchLess", label: "كتلة أصغر بكثير", m: 0.25 },
+] as const;
+
+/** Other planets simulated with real gravity (AU, start phase in rad). */
+export const PLANET_ORBITS = [
+  { name: "mercury", au: 0.39, phase: 1.2 },
+  { name: "venus", au: 0.72, phase: 3.9 },
+  { name: "mars", au: 1.52, phase: 0.6 },
+  { name: "jupiter", au: 5.2, phase: 2.4 },
+  { name: "saturn", au: 9.58, phase: 5.1 },
+  { name: "uranus", au: 19.2, phase: 4.2 },
+  { name: "neptune", au: 30.05, phase: 0.2 },
+];
+const circularBody = (au: number, phase: number): Body => {
+  const v = Math.sqrt((4 * Math.PI * Math.PI) / au);
+  return { x: au * Math.cos(phase), y: au * Math.sin(phase), vx: -v * Math.sin(phase), vy: v * Math.cos(phase) };
+};
 export const EARTH_R = 0.42; // exaggerated visual radius
 export const SUN_R = SUN_COLLIDE_AU * S;
 
@@ -58,10 +86,13 @@ export class Sim {
   earth: Body = { x: 1, y: 0, vx: 0, vy: 0 };
   twin: Body = { x: 1, y: 0, vx: 0, vy: 0 };
   gravity = true;
+  sunMass = 1;
+  planets: Body[] = [];
+  planetDead: boolean[] = [];
   twinOn = false;
   twinDv = 0.3;
   race = {
-    on: false, realT: 0, added: 0, lastRecompute: 0,
+    on: false, done: false, realT: 0, added: 0, lastRecompute: 0,
     ang: { earth: 0, twin: 0 }, sweep: { earth: 0, twin: 0 }, t0: 0,
   };
   running = true;
@@ -88,8 +119,13 @@ export class Sim {
     this.earth = { x: 1, y: 0, vx: 0, vy: 0 };
     setVelocity(this.earth, EARTH_V_KMS, 0);
     this.gravity = true;
+    this.sunMass = 1;
+    this.planets = PLANET_ORBITS.map((p) => circularBody(p.au, p.phase));
+    this.planetDead = PLANET_ORBITS.map(() => false);
+    this.running = true;
     this.twinOn = false;
     this.race.on = false;
+    this.race.done = false;
     this.t = 0;
     this.collided = { earth: false, twin: false };
     this.trail.clear();
@@ -132,6 +168,17 @@ export class Sim {
     this.recompute();
   }
 
+  /** Change the Sun's mass instantly; every body keeps its current position and velocity. */
+  setSunMass(m: number) {
+    if (m === this.sunMass) return;
+    this.snapshotPrev();
+    this.mark("speed");
+    this.gravity = true;
+    this.sunMass = m;
+    this.changeVersion++;
+    this.recompute();
+  }
+
   startTwin(dvKms: number) {
     this.twinDv = dvKms;
     this.twinOn = true;
@@ -148,10 +195,12 @@ export class Sim {
     this.recompute();
   }
 
-  startRace() {
-    this.startTwin(0);
+  /** Two-planet experiment: gradual divergence, then the race continues from that exact state. */
+  startRace(softDv = TWIN_SOFT_DV) {
+    this.running = true;
+    this.startTwin(softDv);
     this.race = {
-      on: true, realT: 0, added: 0, lastRecompute: 0,
+      on: true, done: false, realT: 0, added: 0, lastRecompute: 0,
       ang: { earth: Math.atan2(this.earth.y, this.earth.x), twin: Math.atan2(this.twin.y, this.twin.x) },
       sweep: { earth: 0, twin: 0 }, t0: this.t,
     };
@@ -164,15 +213,15 @@ export class Sim {
     this.recompute();
   }
 
-  static forecast(b0: Body, gravity: boolean) {
+  static forecast(b0: Body, gravity: boolean, mass = 1) {
     const b = { ...b0 };
-    const o = orbitInfo(b, gravity);
+    const o = orbitInfo(b, gravity, mass);
     const pts: number[] = [];
     const h = 0.0015;
     const maxT = gravity && isFinite(o.periodYr) ? Math.min(o.periodYr * 1.002, 12) : 6;
     let t = 0, i = 0;
     while (t < maxT && i < 40000) {
-      step(b, h, gravity);
+      step(b, h, gravity, mass);
       t += h;
       i++;
       const r = Math.hypot(b.x, b.y);
@@ -184,8 +233,8 @@ export class Sim {
   }
 
   recompute() {
-    this.predict = this.collided.earth ? new Float32Array(0) : Sim.forecast(this.earth, this.gravity);
-    this.predictTwin = this.twinOn && !this.collided.twin ? Sim.forecast(this.twin, this.gravity) : new Float32Array(0);
+    this.predict = this.collided.earth ? new Float32Array(0) : Sim.forecast(this.earth, this.gravity, this.sunMass);
+    this.predictTwin = this.twinOn && !this.collided.twin ? Sim.forecast(this.twin, this.gravity, this.sunMass) : new Float32Array(0);
     this.predictVersion++;
   }
 
@@ -201,7 +250,7 @@ export class Sim {
     for (const [key, b] of bodies) {
       if (this.collided[key]) continue;
       for (let i = 0; i < n; i++) {
-        step(b, sub, this.gravity);
+        step(b, sub, this.gravity, this.sunMass);
         if (this.gravity && Math.hypot(b.x, b.y) < SUN_COLLIDE_AU) {
           this.collided[key] = true;
           if (key === "earth") this.explosion = { pos: toScene(b), t0: this.clock };
@@ -210,10 +259,19 @@ export class Sim {
         }
       }
     }
+    this.planets.forEach((b, k) => {
+      if (this.planetDead[k]) return;
+      for (let i = 0; i < n; i++) {
+        step(b, sub, this.gravity, this.sunMass);
+        const r = Math.hypot(b.x, b.y);
+        if ((this.gravity && r < SUN_COLLIDE_AU) || r > 400) { this.planetDead[k] = true; break; }
+      }
+    });
     this.t += dt;
     const R = this.race;
     if (R.on) {
       R.realT += realDt;
+      if (R.realT >= RACE_END_S) { R.done = true; this.running = false; }
       // After RACE_DELAY_S real seconds the twin speeds up gradually and visibly.
       if (R.realT > RACE_DELAY_S && R.added < RACE_MAX_DV && !this.collided.twin) {
         const inc = Math.min(RACE_RATE * realDt, RACE_MAX_DV - R.added);
