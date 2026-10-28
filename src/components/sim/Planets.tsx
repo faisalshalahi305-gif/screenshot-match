@@ -52,7 +52,7 @@ function makeTex(colors: string[], bands?: boolean) {
   return t;
 }
 
-function Planet({ p, sim }: { p: P; sim: Sim }) {
+function Planet({ p, sim, rings }: { p: P; sim: Sim; rings: boolean }) {
   const grp = useRef<THREE.Group>(null);
   const body = useRef<THREE.Mesh>(null);
   const tex = useMemo(() => makeTex(p.colors, p.bands), [p]);
@@ -73,10 +73,10 @@ function Planet({ p, sim }: { p: P; sim: Sim }) {
   });
   return (
     <>
-      <mesh rotation-x={-Math.PI / 2}>
+      {rings && <mesh rotation-x={-Math.PI / 2}>
         <ringGeometry args={[R - line, R + line, 256]} />
         <meshBasicMaterial color="#7fd4ff" transparent opacity={0.75} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
-      </mesh>
+      </mesh>}
       <group ref={grp}>
         <group rotation-z={p.tilt ?? 0.1}>
           <mesh ref={body}>
@@ -102,10 +102,10 @@ function Planet({ p, sim }: { p: P; sim: Sim }) {
   );
 }
 
-export function Planets({ sim }: { sim: Sim }) {
+export function Planets({ sim, rings = true }: { sim: Sim; rings?: boolean }) {
   return (
     <>
-      {PLANETS.map((p) => <Planet key={p.name} p={p} sim={sim} />)}
+      {PLANETS.map((p) => <Planet key={p.name} p={p} sim={sim} rings={rings} />)}
     </>
   );
 }

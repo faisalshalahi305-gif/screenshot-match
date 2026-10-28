@@ -147,6 +147,7 @@ function SimulationPage() {
   const pick = (k: string) => { PACE.v = 1; const f = fates[k]; if (f) schedule(k, f); };
   const quickReset = () => { if (fateTimer.current) clearTimeout(fateTimer.current); fateTimer.current = null; setPending(null); reset(); };
 
+  const hideOrbits = show.rings === false;
   const toggle = (k: keyof Show) => setShow((s) => ({ ...s, [k]: !s[k] }));
 
   return (
@@ -191,6 +192,7 @@ function SimulationPage() {
               <div className="rounded-md border border-border/40 p-1">
                 <Fate on={pending === "twins"} onClick={() => pick("twins")}>تجربة كوكبين</Fate>
               </div>
+              <Fate on={hideOrbits} onClick={() => setShow((s) => { const h = !hideOrbits; return { ...s, trails: !h, predict: !h, prev: !h, grid: !h, rings: !h }; })}>{hideOrbits ? "إظهار المدارات" : "إخفاء المدارات"}</Fate>
               <div className="grid grid-cols-3 gap-1 pt-1">
                 <Fate onClick={quickReset}>إعادة ضبط</Fate>
                 <Fate onClick={() => { sim.running = !sim.running; force((x) => x + 1); }}>{sim.running ? "إيقاف" : "تشغيل"}</Fate>

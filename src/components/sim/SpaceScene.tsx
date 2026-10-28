@@ -16,7 +16,7 @@ import cloudA from "@/assets/earth_clouds_1024.png.asset.json";
 import normalA from "@/assets/earth_normal_2048.jpg.asset.json";
 
 export type CamMode = "system" | "follow" | "chase" | "sun" | "free" | "wide" | "inner" | "top" | "grand" | "horizon" | "helio";
-export type Show = { trails: boolean; vectors: boolean; predict: boolean; prev: boolean; grid: boolean };
+export type Show = { trails: boolean; vectors: boolean; predict: boolean; prev: boolean; grid: boolean; rings?: boolean };
 
 const NOISE = `
 vec3 mod289(vec3 x){return x-floor(x*(1./289.))*289.;}
@@ -617,7 +617,7 @@ function SpaceSceneImpl({ sim, show, mode, flyKey, tick, onTick, onUser, hidePla
       <Suspense fallback={null}>
         <Starfield />
         <Sun />
-        {!hidePlanets && <Planets sim={sim} />}
+        {!hidePlanets && <Planets sim={sim} rings={show.rings !== false} />}
         <EarthBody which="earth" sim={sim} tint="#ffffff" />
         <EarthBody which="twin" sim={sim} tint="#ffcf8a" />
       </Suspense>
