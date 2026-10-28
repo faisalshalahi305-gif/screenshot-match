@@ -134,13 +134,15 @@ function SimulationPage() {
       force((x) => x + 1);
     }, FATE_DELAY_MS);
   };
+  // States never move the camera; only the user's own camera choice does.
+  const setV = (s: number) => { const sv = Math.max(0, Math.min(80, s)); setSpeed(sv); setAngle(0); PACE.v = 1; sim.applyVelocity(sv, 0); };
   const fates: Record<string, () => void> = {
-    stable: () => { sim.stopTwin(); sim.setGravity(true); applySpeed(EARTH_V_KMS, 0); },
-    sun: () => { sim.setGravity(true); applySpeed(6, 0); },
-    escape: () => { sim.setGravity(true); applySpeed(46, 0); fly("system"); },
-    ...Object.fromEntries(SUN_MASS_PRESETS.map((p) => [`mass_${p.key}`, () => { sim.setSunMass(p.m); fly("wide"); }])),
-    ellipse: () => { sim.setGravity(true); applySpeed(EARTH_V_KMS + ellip * 10, 0); fly("system"); },
-    twins: () => { sim.setGravity(true); sim.stopTwin(); sim.startRace(); fly("system"); },
+    stable: () => { sim.stopTwin(); sim.setGravity(true); setV(EARTH_V_KMS); },
+    sun: () => { sim.setGravity(true); setV(6); },
+    escape: () => { sim.setGravity(true); setV(46); },
+    ...Object.fromEntries(SUN_MASS_PRESETS.map((p) => [`mass_${p.key}`, () => { sim.setSunMass(p.m); }])),
+    ellipse: () => { sim.setGravity(true); setV(EARTH_V_KMS + ellip * 10); },
+    twins: () => { sim.setGravity(true); sim.stopTwin(); sim.startRace(); },
   };
   const pick = (k: string) => { PACE.v = 1; const f = fates[k]; if (f) schedule(k, f); };
   const quickReset = () => { if (fateTimer.current) clearTimeout(fateTimer.current); fateTimer.current = null; setPending(null); reset(); };
