@@ -28,9 +28,9 @@ export const Route = createFileRoute("/simulation")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "محاكاة سرعة الأرض وجاذبية الشمس — ثلاثية الأبعاد" },
+      { title: "المحاكي 1: حركة الكواكب والجاذبية" },
       { name: "description", content: "محاكاة علمية ثلاثية الأبعاد لحركة الأرض حول الشمس وتأثير تغيير السرعة والجاذبية." },
-      { property: "og:title", content: "محاكاة سرعة الأرض وجاذبية الشمس" },
+      { property: "og:title", content: "المحاكي 1: حركة الكواكب والجاذبية" },
       { property: "og:description", content: "مدارات محسوبة فيزيائياً، إفلات، اصطدام، وإيقاف افتراضي للجاذبية." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -156,9 +156,9 @@ function SimulationPage() {
 
       {/* Left tool buttons */}
       <div className="absolute left-3 bottom-4 z-20 flex flex-col gap-1.5">
-        {([["fate", "🎚️", "التحكم والمصائر"], ["cam", "🎥", "الكاميرا"], ["stats", "📊", "الحالة المدارية"], ["lines", "🧭", "الخطوط والمسارات"]] as [typeof open, string, string][]).map(([k, ic, l]) => (
+        {([["fate", "تحكم", "لوحة التحكم"], ["cam", "كاميرا", "الكاميرا"], ["stats", "بيانات", "البيانات"], ["lines", "مسارات", "المسارات"]] as [typeof open, string, string][]).map(([k, ic, l]) => (
           <button key={k} onClick={() => setOpen((o) => (o === k ? null : k))} aria-label={l} title={l}
-            className={`grid h-8 w-8 place-items-center rounded-full border border-border/40 text-sm backdrop-blur-md transition ${open === k ? "bg-primary text-primary-foreground" : "bg-background/50 hover:bg-foreground/10"}`}>{ic}</button>
+            className={`grid h-7 min-w-14 place-items-center rounded-full px-2 text-[10px] border border-border/40 text-sm backdrop-blur-md transition ${open === k ? "bg-primary text-primary-foreground" : "bg-background/50 hover:bg-foreground/10"}`}>{ic}</button>
         ))}
       </div>
 
@@ -167,12 +167,12 @@ function SimulationPage() {
           {open === "fate" && (
             <div className="w-[min(300px,78vw)] space-y-1">
               <div className="grid grid-cols-2 gap-1">
-                <Fate on={pending === "sun"} onClick={() => pick("sun")}>🔥 السقوط في الشمس</Fate>
-                <Fate on={pending === "escape"} onClick={() => pick("escape")}>❄️ الإفلات والتجمد</Fate>
-                <div className="col-span-2 grid"><Fate on={pending === "stable"} onClick={() => pick("stable")}>🌍 المدار الطبيعي المستقر</Fate></div>
+                <Fate on={pending === "sun"} onClick={() => pick("sun")}>مسار الاصطدام</Fate>
+                <Fate on={pending === "escape"} onClick={() => pick("escape")}>مسار الإفلات</Fate>
+                <div className="col-span-2 grid"><Fate on={pending === "stable"} onClick={() => pick("stable")}>المدار المستقر</Fate></div>
               </div>
               <div className="rounded-md border border-border/40 p-1">
-                <div className="mb-1 flex justify-between text-[10px] text-muted-foreground"><span>☀️ كتلة الشمس</span><span dir="ltr" className="font-mono">×{fmt(M, 2)} = {(SUN_MASS_KG * M).toExponential(2)} kg</span></div>
+                <div className="mb-1 flex justify-between text-[10px] text-muted-foreground"><span>كتلة الشمس</span><span dir="ltr" className="font-mono">×{fmt(M, 2)} = {(SUN_MASS_KG * M).toExponential(2)} kg</span></div>
                 <div className="grid grid-cols-2 gap-1">
                   {SUN_MASS_PRESETS.map((p) => (
                     <Fate key={p.key} on={pending === `mass_${p.key}` || (!pending && M === p.m)} onClick={() => pick(`mass_${p.key}`)}>
@@ -182,23 +182,23 @@ function SimulationPage() {
                 </div>
               </div>
               <div className="rounded-md border border-border/40 p-1">
-                <Fate on={pending === "ellipse"} onClick={() => pick("ellipse")}>🪐 مدار إهليلجي متطرف</Fate>
+                <Fate on={pending === "ellipse"} onClick={() => pick("ellipse")}>مدار بيضاوي</Fate>
                 <input type="range" min={0.1} max={1.2} step={0.05} value={ellip} onChange={(e) => setEllip(parseFloat(e.target.value))} className="mt-1 w-full accent-primary" aria-label="شدة التمدد" />
                 <div className="flex justify-between text-[9px] text-muted-foreground"><span>شدة التمدد</span><span dir="ltr" className="font-mono">{fmt(EARTH_V_KMS + ellip * 10, 1)} km/s</span></div>
               </div>
               <div className="rounded-md border border-border/40 p-1">
-                <Fate on={pending === "twins"} onClick={() => pick("twins")}>👥 حالة كوكبين</Fate>
+                <Fate on={pending === "twins"} onClick={() => pick("twins")}>تجربة كوكبين</Fate>
               </div>
               <div className="grid grid-cols-3 gap-1 pt-1">
-                <Fate onClick={quickReset}>🔄 إعادة ضبط</Fate>
-                <Fate onClick={() => { sim.running = !sim.running; force((x) => x + 1); }}>{sim.running ? "⏸️ إيقاف" : "▶️ تشغيل"}</Fate>
+                <Fate onClick={quickReset}>إعادة ضبط</Fate>
+                <Fate onClick={() => { sim.running = !sim.running; force((x) => x + 1); }}>{sim.running ? "إيقاف" : "تشغيل"}</Fate>
                 <Link to="/" className="rounded-md bg-foreground/10 px-1 py-1 text-center text-[10px] hover:bg-foreground/20">العودة للدرس</Link>
               </div>
             </div>
           )}
           {open === "cam" && (
             <div className="flex flex-col gap-0.5">
-              {([["top", "🔭 المجموعة الشمسية (علوي)"], ["grand", "🪐 المجموعة الشمسية (مائل)"], ["horizon", "🌅 أفق الأرض"], ["helio", "☀️ من فوق الشمس"], ["follow", "قرب الأرض"], ["chase", "تتبع خلفي"], ["system", "المدار كاملاً"], ["inner", "الكواكب الداخلية"], ["wide", "كل الكواكب"], ["sun", "الشمس"]] as [CamMode, string][]).map(([m, l]) => (
+              {([["top", "المجموعة الشمسية (علوي)"], ["grand", "المجموعة الشمسية (مائل)"], ["horizon", "أفق الأرض"], ["helio", "من فوق الشمس"], ["follow", "قرب الأرض"], ["chase", "تتبع خلفي"], ["system", "المدار كاملاً"], ["inner", "الكواكب الداخلية"], ["wide", "كل الكواكب"], ["sun", "الشمس"]] as [CamMode, string][]).map(([m, l]) => (
                 <button key={m} onClick={() => fly(m)} className={`rounded-full px-3 py-1 text-[11px] transition ${mode === m ? "bg-primary text-primary-foreground" : "hover:bg-foreground/10"}`}>{l}</button>
               ))}
             </div>
@@ -226,7 +226,7 @@ function SimulationPage() {
               <Explain c="#6fb6ff" t="المسار الحالي" />
               <Explain c="#ffffff" t="المسار المتوقع" />
               <Explain c="#c9a46a" t="المدار السابق" />
-              {sim.twinOn && <Explain c="#ffb347" t="الأرض الثانية" />}
+              {sim.twinOn && <Explain c="#ffb347" t="الكوكب الأسرع" />}
             </div>
           )}
         </div>
@@ -253,11 +253,11 @@ function SimulationPage() {
         return (
           <div className="pointer-events-none absolute inset-x-0 top-2 z-20 mx-auto flex w-[min(560px,96vw)] flex-col gap-1">
             <div className="text-center text-[11px] font-semibold text-primary">
-              {R.done ? "✅ انتهت التجربة — النتائج النهائية" : left > 0 ? `افتراق تدريجي — يبدأ السباق بعد ${Math.ceil(left)} ث` : R.realT < accelEnd ? "السباق: الكوكب الثاني يتسارع من موضعه الحالي ويتغير مداره وزمن دورته" : "السباق مستمر — مقارنة المدارين"} · الزمن المنقضي {fmt(days, 0)} يوم
+              {R.done ? "انتهت التجربة — النتائج النهائية" : left > 0 ? `افتراق تدريجي — تبدأ المقارنة بعد ${Math.ceil(left)} ث` : R.realT < accelEnd ? "الكوكب الأسرع يتسارع ويتغير مداره وزمن دورته" : "مقارنة المدارين عند اختلاف السرعة"} · الزمن المنقضي {fmt(days, 0)} يوم
             </div>
             <div className="grid grid-cols-2 gap-1">
-              {row("🌍 الأرض الأصلية", sim.earth, "earth", sim.collided.earth)}
-              {row("🟠 الكوكب الأسرع", sim.twin, "twin", sim.collided.twin)}
+              {row("كوكب الأرض", sim.earth, "earth", sim.collided.earth)}
+              {row("الكوكب الأسرع", sim.twin, "twin", sim.collided.twin)}
             </div>
           </div>
         );
