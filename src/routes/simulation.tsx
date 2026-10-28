@@ -167,9 +167,9 @@ function SimulationPage() {
           {open === "fate" && (
             <div className="w-[min(300px,78vw)] space-y-1">
               <div className="grid grid-cols-2 gap-1">
-                <Fate on={pending === "stable"} onClick={() => pick("stable")}>🌍 المدار الطبيعي المستقر</Fate>
                 <Fate on={pending === "sun"} onClick={() => pick("sun")}>🔥 السقوط في الشمس</Fate>
                 <Fate on={pending === "escape"} onClick={() => pick("escape")}>❄️ الإفلات والتجمد</Fate>
+                <div className="col-span-2 grid"><Fate on={pending === "stable"} onClick={() => pick("stable")}>🌍 المدار الطبيعي المستقر</Fate></div>
               </div>
               <div className="rounded-md border border-border/40 p-1">
                 <div className="mb-1 flex justify-between text-[10px] text-muted-foreground"><span>☀️ كتلة الشمس</span><span dir="ltr" className="font-mono">×{fmt(M, 2)} = {(SUN_MASS_KG * M).toExponential(2)} kg</span></div>
