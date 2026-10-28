@@ -15,8 +15,8 @@ export const RACE_END_S = RACE_DELAY_S + RACE_MAX_DV / RACE_RATE + RACE_TAIL_S;
 /** Sun-mass presets, as multiples of the real Sun (1.989×10³⁰ kg). */
 export const SUN_MASS_KG = 1.989e30;
 export const SUN_MASS_PRESETS = [
-  { key: "more", label: "كتلة أكبر", m: 1.5 },
-  { key: "muchLess", label: "كتلة أصغر بكثير", m: 0.25 },
+  { key: "more", label: "أكبر", m: 1.5 },
+  { key: "muchLess", label: "أصغر", m: 0.25 },
 ] as const;
 
 /** Other planets simulated with real gravity (AU, start phase in rad). */
